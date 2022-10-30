@@ -1,10 +1,12 @@
-import math
+import cmath
 from numba import jit
 import warnings
-import numpy
 warnings.filterwarnings('ignore')
 #--- to do ---:
+#fix  arcsinh and continue on trig functions
+#add support for complex numbers everywhere (except integral ranges)
 #add inverse hyperbolic functions like arcsetch, arcsinh etc
+#add ability to view values on the complex plane
 #add fourier and laplace transform
 #add matrix calculations
 #add plotting ability
@@ -18,16 +20,18 @@ warnings.filterwarnings('ignore')
 #sine input: (sin.val)
 #cos input: (cos.val)
 #root input: (root,base,val)
+#https://www.digitec.ch/de/s1/product/philips-ph805-anc-30-h-kopfhoerer-12388306
+#https://www.reichelt.com/ch/de/axialluefter-50x50x15mm-24v-22-1m-h-29dba-sun-mf50152v2-1-p260672.html?&trstct=pos_4&nbc=1
 
-pi = 3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679  #first 100 digits of pi
-e =  2.7182818284590452353602874713526624977572470936999595749669676277240766303535475945713821785251664274  #first 100 digits of e
-
+pi =     3.1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679  #first 100 digits of pi
+e =      2.7182818284590452353602874713526624977572470936999595749669676277240766303535475945713821785251664274  #first 100 digits of e
+root15 = 3.8729833462074168851792653997823996108329217052915908265875737661134830919369790335192873768586735179  #first 100 digits or root15
 
 def parse(somefunction):
     somefunction = str(somefunction)
     somefunction = somefunction.split('.')
     value = (somefunction[1:len(somefunction)])
-    value = ''.join(value)
+    value = '.'.join(value)
     if not 'j' in str(somefunction):
         return float(value)
     else:
@@ -40,28 +44,34 @@ def parse(somefunction):
 
 def hyperbolic_arccosine(function):
     x = parse(function)
-    if x > 1:
-        root1 = root(f'root,2,{x**2-1}')
-        return natural_logarithm(f'ln.{x+root1}')
-    else: 
-        return 'err1'
+    if x.imag == 0 and x.real > 1:
+        root1 = x+root(f'root,2,{(x**2)-1}')
+        return natural_logarithm(f'ln.{root1}')
 
 def hyperbolic_arcsecant(function):
-    return 'err2'
-
+    x = parse(function)
+    root1 = root(f'root,2,{(1-x)/(2*x)}')
+    print(hyperbolic_arcsine(f'arcsinh.{root1}'))
+    return  2*hyperbolic_arcsine(f'arcsinh.{root1}')
+#
 def hyperbolic_arccotangent(function):
     x = parse(function)
-    if x > 1 or x < -1:
-        return hyperbolic_arctangent(f'arctanh.{1/x}')
+    root1 = hyperbolic_arctangent(f'arctanh.{1/x}')
+    if x.real > 1 and x.real > -1:
+        return root1
     else:
-        return 'err1'
+        if x.imag > 0:
+            return (-root1.real)+(root1.imag*1j)
+        else:
+            return (-root1.real)-(root1.imag*1j)
 
 def hyperbolic_arctangent(function):
     x = parse(function)
-    if x < 1 and x > -1:
-        return 0.5*(natural_logarithm(f'ln.{(1+x)/(1-x)}'))
+    if x.real < 1 and x.real > -1:
+        return 0.5*(natural_logarithm(f'ln.{(1 + x) / (1 - x)}'))
     else:
-        return 'err1'
+        root1 = 1 / (x * 1j)
+        return -(arccotangent(f'arccot.{-root1}')*1j)
 
 
 def hyperbolic_arcosecant(function):
@@ -71,8 +81,12 @@ def hyperbolic_arcosecant(function):
 
 def hyperbolic_arcsine(function):
     x = parse(function)
-    root1 = root(f'root,2,{x**2+1}')
-    return natural_logarithm(f'ln.{x+root1}')
+    if x.real == 0 and x.imag != 0 or x.real != 0 and x.imag == 0:
+        root1 = root(f'root,2,{x**2+1}')
+        return natural_logarithm(f'ln.{x+root1}')
+    else:
+        root1 = 1+(x**2)
+        return natural_logarithm(f'ln.{root1}')
 
 def hyperbolic_cosecant(function):
     x = parse(function)
@@ -100,35 +114,46 @@ def hyperbolic_cosine(function):
 
 def arccotangent(function):
     x = parse(function)
-    return (pi/2)-(arctangent(f'arctan.{x}'))
+    return arctangent(f'arctan.{1/x}')
 
 def arccosecant(function):
     x = parse(function)
-    return (pi/2)-arcsecant(f'arcsec.{x}')
+    if x.imag == 0:
+        return arcsine(f'arcsin.{1/x}').real
+    else:
+        return -(arcsine(f'arcsin.{1/x}'))
 
 def arcsecant(function):
     x = parse(function)
     return arccosine(f'arccos.{1/x}')
 
+
 def arctangent(function):
     x = parse(function)
-    exactness = 500
-    x2 = x**2
-    d = exactness * 2 + 1
-    for k in range(exactness, 0, -1):
-        f = k * 2 - 1
-        d = f + k*k*x2/d
-    return x / d
+    root1 = 0.5*(natural_logarithm(f'ln.{1+(x*1j)}')*1j)
+    root2 = 0.5*(natural_logarithm(f'ln.{1-(x*1j)}')*1j)
+    return root2-root1
 
 def arccosine(function):
     x = parse(function)
-    root1 = root(f'root,2,{1-(x**2)}')
-    return arctangent(f'arctan.{root1/x}')
+    if x.imag == 0:
+        if x.real < 1 and x.real > -1:
+            return pi / 2 + (hyperbolic_arcsine(f'arcsinh.{x*1j}')*1j)
+        else:
+            return (pi / 2 - (-arcsine(f'arcsin.{x}')))-pi
+    else:
+        return pi / 2 + (hyperbolic_arcsine(f'arcsinh.{x*1j}')*1j)
 
 def arcsine(function):
-    x = float(parse(function))
-    root1 = root(f'root,2,{1-(x**2)}')
-    return arctangent(f'arctan.{x/root1}')
+    x =parse(function)
+    if x.imag == 0:
+        root1 = (x+root(f'root,2,{1-(x**2)}'))*1j
+        return natural_logarithm(f'ln.{root1}')
+    else:
+        if x.real == 0 and x.imag != 0:
+            return (hyperbolic_arcsine(f'arcsinh.{x*1j}'))*1j
+        else:
+            root1 = hyperbolic_arcsine(f'arcsinh.{-(x*1j)}')
 
 def cotangent(function):
     x = parse(function)
@@ -149,15 +174,19 @@ def tangent(function):
 def root(function):
     function = str(function)
     function = function.split(',')
-    base = float(function[1])
-    value = float(function[2])
-    res = value**(1/base)
-    if res.real < 1e-15:
-        return res.imag
-    elif res.imag < 1e-15:
-        return res.real
+    base = complex(function[1])
+    value = complex(function[2])
+    if value.real == 0 and value.imag != 0 or value.real != 0 and value.imag == 0:
+        res = value**(1/base)
+        if value.real < 0:
+            return res
+        else:
+            return res*1j
     else:
-        return res
+        if base == 2:
+            return cmath.sqrt(value)
+        else:
+            return 'err2'
 
 def natural_logarithm(function):
     x = parse(function)
@@ -167,9 +196,9 @@ def logarithm(function):
     #i had to use the math module for logarithms because they are very complicated to solve
     function = str(function)
     function = function.split(',')
-    base = function[1]
-    value = function[2]
-    return math.log(float(value),float(base))
+    base = complex(function[1])
+    value = complex(function[2])
+    return cmath.log(value,base)
 
 def sine(function):
     x = parse(function)
@@ -185,14 +214,15 @@ def definite_integral(function):
     a = function[1]
     b = function[2]
     calculationbase = function[3]
-    exactness = 30000
+    exactness = 5000
     a = int(a)*exactness
     b = int(b)*exactness
     ans = 0
     while a != b:
         calculation = calculationbase.replace('x',str(a/exactness))
+        calculation = calculation.replace(';',' ')
         value = evaluate(calculation)
-        ans+=value
+        ans+=complex(value)
         if a>b:
             a-=1
         elif a<b:
@@ -200,19 +230,19 @@ def definite_integral(function):
     return ans/exactness
 
 def exponentiation(a,b):
-    return float(a)**float(b)
+    return complex(a)**complex(b)
 
 def division(a,b):
-    return float(a)/float(b)
+    return complex(a)/complex(b)
 
 def multiplication(a,b):
-    return float(a)*float(b)
+    return complex(a)*complex(b)
 
 def substraction(a,b):
-    return float(a)-float(b)
+    return complex(a)-complex(b)
 
 def addition(a,b):
-    return float(a)+float(b)
+    return complex(a)+complex(b)
 
 def calculate(expression):
     result2 = expression
@@ -230,6 +260,8 @@ def calculate(expression):
             try:
                 n1 = values[i-1]
                 n2 = values[i+1]
+                n1 = complex(n1)
+                n2 = complex(n2)
             except:
                 pass
             if char == '^':
@@ -312,31 +344,25 @@ def calculate(expression):
 
             
 def evaluate(inpt):
+    result= ''
     inpt = str(inpt)
-    opening_bracket_count = 0
-    closing_bracket_count = 0
-    index = []
-    tte = 0
-    while True: 
-        if '(' in inpt:
+    startindex = 0
+    endindex = 0
+    inparenthesis = ''
+    while True:
+        if '(' and ')' in inpt:
             for i in range(len(inpt)):
                 char = inpt[i]
-                if char == '(':
-                    if opening_bracket_count == closing_bracket_count:
-                        index.append(i)
-                    opening_bracket_count+=1
+                if char == '(' :
+                    startindex = i
                 elif char == ')':
-                    closing_bracket_count+=1
-                    if opening_bracket_count == closing_bracket_count:
-                        index.append(i)
-            tte = inpt[index[0]+1:index[1]] #thing to evaluate
-            ebtte = inpt[0:index[0]] #everything before tte
-            eatte = inpt[index[1]+1:len(inpt)] #everything after tte
-            if eatte == ')':
-                eatte = ''
-            evaluation = evaluate(tte)
-            inpt = f'{ebtte}{evaluation}{eatte}'
-            inpt = str(inpt)
+                    endindex = i
+                    break
+            inparenthesis = inpt[startindex+1:endindex]
+            ebp = inpt[0:startindex]
+            eap = inpt[endindex+1:len(inpt)]
+            evaluation = str(evaluate(inparenthesis))
+            inpt = ebp+evaluation+eap
         else:
             result = calculate(inpt)
             break
@@ -345,8 +371,25 @@ def evaluate(inpt):
     elif result == 'err2':
         result = 'result is complex'
     return result
+checkresults =True
+if checkresults:
+    results = []
+    checklist = [
+        '1 + 8','5 - 3','3 * 3','10 / 5','3 ^ 3', '1 + (2 - (3 * (2 ^ (1 + 2))))',
+        'di,1,10,x;*;2','log,4,5','root,2,256','sin.6','cos.4','tan.67','sec.5',
+        'cot.5','csc.5','sinh.4','cosh.4','tanh.4','sech.4','coth.4','csch.5',
+        'arcsin.4','arccos.4','arctan.0.2','arcsec.0.4','arccot.0.5'
+    ]
+    for item in checklist:
+        results.append(evaluate(item))
+
 while True:
     input2 = input('>>>   ')
     #input2 = 'di,1,10,x;*;2'
-    res = evaluate(input2)
-    print(res)
+    res = complex(evaluate(input2))
+    if res.imag < 0.00000000000001 and res.imag > -0.00000000000001:
+        res = res.real + 0j
+    elif res.real < 0.00000000000001 and res.real > -0.00000000000001:
+        res = 0 + (res.imag*1j)
+    print(f'real part:      {res.real}')
+    print(f'imaginary part: {res.imag}')
