@@ -21,7 +21,8 @@ pos = positions()
 pos.x = sc.x-(numpy.cos(0)*linelength)
 pos.y = sc.y-(numpy.sin(0)*linelength)
 progress = numpy.arccos(-1)*linelength
-velocity = 3.5*(1/fps)
+velocity = 2*(1/fps)
+difficulty = fps
 shotspeed = 600*(1/fps)
 py = pos.y
 direction = 0
@@ -31,35 +32,69 @@ rr = False
 shots = []
 enemies = []
 WHITE = [255,255,255]
+count = 0
 def drawshots():
-    #[progress,x1,y1,x2,y2,linelength]
+    #[progress,x1,y1,ll]
     global shots
     for i in range(len(shots)):
         try:
             item = shots[i]
-            shots[i][5] += shotspeed
-            ll = shots[i][5]
+            ll = shots[i][3]
+            shots[i][3] += shotspeed
             shots[i][1] = sc.x-(numpy.cos(item[0])*(ll))
             shots[i][2] = sc.y-(numpy.sin(item[0])*(ll))
-            shots[i][3] = sc.x-(numpy.cos(item[0])*(ll+50))
-            shots[i][4] = sc.y-(numpy.sin(item[0])*(ll+50))
             x = item[1]
             y = item[2]
-            x2 = item[3]
-            y2 = item[4]
-            pygame.draw.aaline(screen,WHITE,[x,y],[x2,y2],True)
+            pygame.draw.circle(screen,WHITE,[x,y],10)
             if x < 0 or y < 0 or x > screendimensions[0] or y > screendimensions[1]:
                 del shots[i]
         except Exception as e:
             print(e)
 
 def drawenemies():
-    randlist = [[[-100,-100],[900,-100]],[[-100,-100],[-100,500]],[[-100,500],[900,500]],[[900,500],[900,-100]]]
-    rand1 = random.randint(0,3)
-    randenemyposx = random.randint(randlist[rand1][0][0],randlist[rand1][1][0])
-    print(f'x: {randenemyposx}')
-    randenemyposy = random.randint(randlist[rand1][0][1],randlist[rand1][1][1])
-    print(f'x: {randenemyposx}  y: {randenemyposy}')
+    global difficulty
+    global count
+    global enemies
+    try:
+        if count == round(difficulty):
+            randypos = random.randint(-35,435)
+            enemies.append([-20,randypos])
+            count = 0
+        for item in enemies:
+            pygame.draw.circle(screen,WHITE,item,50)
+    except:
+        pass
+    #check collision
+    enemydeleltelist = []
+    for a in range(len(enemies)):
+        enemy = enemies[a]
+        enemyxpos = -20
+        enemyypos = enemy[1]
+        for b in range(len(shots)):
+            shot = shots[b]
+            shotxpos = abs(shot[1])
+            shotypos = abs(shot[2])
+            xdifference = shotxpos-enemyxpos
+            ydifference = shotypos-enemyypos
+            difference = numpy.sqrt(xdifference**2+(ydifference**2))
+            if difference < 60:
+                enemydeleltelist.append(a)
+    print(len(enemies))
+    enemydeleltelist.sort()
+    enemydeleltelist.reverse()
+    for i in range(len(enemydeleltelist)):
+        item = enemydeleltelist[i]
+        del enemies[int(item)]
+    count+=1
+    difficulty-= 5*(1/fps)
+    difficulty = abs(difficulty)
+    if round(difficulty) == 0:
+        difficulty = 5
+    print(difficulty)
+    
+    
+            
+
 
 def checkhitbox():
     global enemies
@@ -95,7 +130,7 @@ while not stopmainloop:
             elif event.key == pygame.K_RIGHT:
                 rr = True
             elif event.key == pygame.K_SPACE:
-                shots.append([progress,pos.x,pos.y,0,0,linelength])
+                shots.append([progress,pos.x,pos.y,linelength])
         elif event.type == pygame.KEYUP:
             if event.key == pygame.K_LEFT:
                 rl = False
